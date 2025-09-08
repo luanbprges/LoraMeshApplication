@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Chat WebSocket</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f3f4f6;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .chat {
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      width: 400px;
+      max-width: 90%;
+    }
+    .log {
+      height: 200px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 8px;
+      margin-bottom: 10px;
+      background: #fafafa;
+      font-size: 14px;
+    }
+    .input-area {
+      display: flex;
+      gap: 8px;
+    }
+    input {
+      flex: 1;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+    button {
+      padding: 8px 12px;
+      border: none;
+      border-radius: 8px;
+      background: #2563eb;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #1d4ed8;
+    }
+  </style>
+</head>
+<body>
+  <div class="chat">
+    <h2>💬 Chat WebSocket</h2>
+    <div id="log" class="log"></div>
+    <div class="input-area">
+      <input type="text" id="message" placeholder="Digite sua mensagem..." />
+      <button onclick="sendMessage()">Enviar</button>
+    </div>
+  </div>
+
+  <script>
+    // Substitua pelo endereço do seu servidor
+    const socket = new WebSocket("ws://192.168.1.199:8090");
+
+    const logDiv = document.getElementById("log");
+    const input = document.getElementById("message");
+
+    socket.onopen = () => addLog("✅ Conectado ao servidor");
+    socket.onclose = () => addLog("❌ Conexão fechada");
+    socket.onmessage = (event) => addLog("📩 Servidor: " + event.data);
+
+    function sendMessage() {
+      if (socket.readyState === WebSocket.OPEN) {
+        const msg = input.value;
+        socket.send(msg);
+        addLog("Você: " + msg);
+        input.value = "";
+      } else {
+        addLog("⚠️ Não conectado");
+      }
+    }
+
+    function addLog(text) {
+      const p = document.createElement("div");
+      p.textContent = text;
+      logDiv.appendChild(p);
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+  </script>
+</body>
+</html>
