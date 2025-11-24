@@ -1,98 +1,161 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Chat WebSocket</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aplicação Loramesh</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background: #f3f4f6;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
+      font-family: Arial, Helvetica, sans-serif;
+      background-color: #f4f9fb;
       margin: 0;
+      padding: 0;
     }
-    .chat {
-      background: #fff;
+
+    header {
+      background-color: #0a3d62;
+      color: #fff;
+      text-align: center;
       padding: 20px;
+      font-size: 1.6rem;
+      font-weight: bold;
+    }
+
+    .container {
+      max-width: 450px;
+      margin: 40px auto;
+      background: #fff;
+      padding: 25px 30px;
       border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      width: 400px;
-      max-width: 90%;
+      box-shadow: 0px 6px 15px rgba(0, 0, 0, 0.15);
     }
-    .log {
-      height: 200px;
-      overflow-y: auto;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      padding: 8px;
-      margin-bottom: 10px;
-      background: #fafafa;
-      font-size: 14px;
-    }
-    .input-area {
+
+    .form-group {
       display: flex;
-      gap: 8px;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
     }
-    input {
-      flex: 1;
+
+    .form-group label {
+      font-size: 1rem;
+      color: #333;
+      font-weight: 500;
+    }
+
+    .form-group input {
+      width: 120px;
       padding: 8px;
-      border: 1px solid #ccc;
-      border-radius: 8px;
+      border: 2px solid #c7ebf2;
+      border-radius: 6px;
+      text-align: center;
+      font-size: 1rem;
+      outline: none;
+      transition: border 0.3s;
     }
-    button {
-      padding: 8px 12px;
+
+    .form-group input:focus {
+      border-color: #0a3d62;
+    }
+
+    .btn-submit {
+      width: 100%;
+      padding: 12px;
       border: none;
+      background: #0a3d62;
+      color: #fff;
+      font-size: 1rem;
       border-radius: 8px;
-      background: #2563eb;
-      color: white;
       cursor: pointer;
+      transition: background 0.3s;
     }
-    button:hover {
-      background: #1d4ed8;
+
+    .btn-submit:hover {
+      background: #145a8d;
+    }
+
+    .output {
+      margin-top: 20px;
+      padding: 15px;
+      background: #eef6f9;
+      border: 1px solid #c7ebf2;
+      border-radius: 8px;
+      font-family: monospace;
+      white-space: pre-wrap;
     }
   </style>
 </head>
 <body>
-  <div class="chat">
-    <h2>💬 Chat WebSocket</h2>
-    <div id="log" class="log"></div>
-    <div class="input-area">
-      <input type="text" id="message" placeholder="Digite sua mensagem..." />
-      <button onclick="sendMessage()">Enviar</button>
-    </div>
+  <header>Aplicação Loramesh</header>
+  
+  <div class="container">
+    <form id="lorameshForm">
+      <div class="form-group">
+        <label for="device">End Device:</label>
+        <input type="number" id="device" name="device">
+      </div>
+      <div class="form-group">
+        <label for="param">Parâmetro:</label>
+        <input type="number" id="param" name="parametro">
+      </div>
+      <div class="form-group">
+        <label for="function">Função:</label>
+        <input type="number" id="function" name="funcao">
+      </div>
+      <div class="form-group">
+        <label for="value">Valor:</label>
+        <input type="number" id="value" name="valor">
+      </div>
+      <button class="btn-submit" type="submit">Enviar</button>
+    </form>
+
+    <div class="output" id="output">Aguardando mensagens...</div>
   </div>
-
+  
   <script>
-    // Substitua pelo endereço do seu servidor
-    const socket = new WebSocket("ws://192.168.1.199:8090");
+    // Substitua pelo endereço do seu servidor WebSocket
+    const socket = new WebSocket("ws://10.15.70.51:8090");
 
-    const logDiv = document.getElementById("log");
-    const input = document.getElementById("message");
+    const form = document.getElementById("lorameshForm");
+    const output = document.getElementById("output");
+    
+    const SRC = 0;                                                //Source address
+    const CRC = 0x68;                                             //Checagem de erro da mensagem
 
-    socket.onopen = () => addLog("✅ Conectado ao servidor");
-    socket.onclose = () => addLog("❌ Conexão fechada");
-    socket.onmessage = (event) => addLog("📩 Servidor: " + event.data);
+    socket.onopen = () => {
+      output.textContent = "Conectado ao servidor WebSocket!";
+    };
 
-    function sendMessage() {
+    socket.onclose = () => {
+      output.textContent = "Conexão encerrada.";
+    };
+
+    socket.onerror = (err) => {
+      output.textContent = "Erro na conexão WebSocket.";
+      console.error(err);
+    };
+
+    socket.onmessage = (event) => {
+      output.textContent = "Mensagem recebida: " + event.data;
+    };
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault(); // Impede o reload da página
+
+      const DST   = document.getElementById("device").value;
+      const FCT   = document.getElementById("function").value;
+      const START = document.getElementById("param").value;
+      const VAL   = document.getElementById("value").value;
+
+      const msg = String (DST+SRC+FCT+START+VAL+CRC);
+
       if (socket.readyState === WebSocket.OPEN) {
-        const msg = input.value;
-        socket.send(msg);
-        addLog("Você: " + msg);
-        input.value = "";
+        socket.send(msg); // Envia mensagem
+        output.textContent = "Mensagem enviada: " + msg;
       } else {
-        addLog("⚠️ Não conectado");
+        output.textContent = "Erro: WebSocket não está conectado!";
       }
-    }
-
-    function addLog(text) {
-      const p = document.createElement("div");
-      p.textContent = text;
-      logDiv.appendChild(p);
-      logDiv.scrollTop = logDiv.scrollHeight;
-    }
+    });
   </script>
 </body>
 </html>
