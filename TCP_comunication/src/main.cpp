@@ -17,7 +17,7 @@ static unsigned long lastSend = 0;
 void connectToWiFi();
 void reconnect();
 void webSocketEvent(WStype_t type, uint8_t * payload, size_t length);
-void SendMessage(String src, String dst, String fct, String param, String val);
+void SendMessage(String src, String dst, String fct, String param, String val, const char* requestId);
 
 
 void setup() {
@@ -90,10 +90,11 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
       return;
     }
 
-    const char* src = doc["dst"];
-    const char* dst = doc["src"];
+    const char* src = doc["dst"] | "";
+    const char* dst = doc["src"] | "";
     const char* fct = doc["fct"];
     const char* param = doc["param"];
+    const char* requestId = doc["requestId"];
 
     // Verifica se a mensagem é destinada a este dispositivo
     if (src && strcmp(src, "0x907F") == 0) {
@@ -105,12 +106,12 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
         /* ---------------------- Verifica se é no Pot ----------------------*/
         if(param && strcmp(param, "1") == 0) {
           std::string valorStr = std::to_string(count);
-          SendMessage(src, dst, fct, param, valorStr.c_str());
+          SendMessage(src, dst, fct, param, valorStr.c_str(), requestId);
         }
 
         /* ---------------------- Verifica se é no LED ----------------------*/  
         else if(param && strcmp(param, "2") == 0) {
-          SendMessage(src, dst, fct, param, (digitalRead(PinLED) == HIGH ? "true" : "false"));
+          SendMessage(src, dst, fct, param, (digitalRead(PinLED) == HIGH ? "true" : "false"), requestId);
         }
       }
 
@@ -130,7 +131,7 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
             digitalWrite(PinLED, LOW);
           }
 
-          SendMessage(src, dst, fct, param, (digitalRead(PinLED) == HIGH ? "true" : "false")); // Envia confirmação do novo estado
+          SendMessage(src, dst, fct, param, (digitalRead(PinLED) == HIGH ? "true" : "false"), requestId); // Envia confirmação do novo estado
         }
 
         /* ---------------------- Verifica se é no LED ----------------------*/  
@@ -145,7 +146,7 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
             digitalWrite(PinLED, LOW);
           }
 
-          SendMessage(src, dst, fct, param, (digitalRead(PinLED) == HIGH ? "true" : "false")); // Envia confirmação do novo estado
+          SendMessage(src, dst, fct, param, (digitalRead(PinLED) == HIGH ? "true" : "false"), requestId); // Envia confirmação do novo estado
         }
         
       }
@@ -155,7 +156,7 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
 
 
 /*----------------------- Envio de resposta -----------------------*/
-void SendMessage(String src, String dst, String fct, String param, String val) {
+void SendMessage(String src, String dst, String fct, String param, String val, const char* requestId) {
   if (webSocket.isConnected()) {
     StaticJsonDocument<200> doc;
     doc["dst"] = dst;
@@ -163,6 +164,11 @@ void SendMessage(String src, String dst, String fct, String param, String val) {
     doc["fct"] = fct;
     doc["param"] = param;
     doc["val"] = val;
+
+    if (requestId) {
+      doc["requestId"] = requestId;
+    }
+    
 
     String jsonString;
     serializeJson(doc, jsonString);

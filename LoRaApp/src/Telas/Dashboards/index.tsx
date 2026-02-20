@@ -9,20 +9,13 @@ import { sendMessage, onMessage } from "../../global/WebSocket";
 import type { MessageServer } from "../../Data/messages";
 
 export default function Dashboard() {
-  const [selectedDevice, setSelectedDevice] = useState("0x907F");
+  const [selectedDevice, setSelectedDevice] = useState("");
   const [devices, setDevices] = useState<string[]>([]);
   const [lampOn, setLampOn] = useState(false);
   const [potValue, setPotValue] = useState<number>(0);
   const [data, setData] = useState<{ time: string; pot: number }[]>([]);
 
-  // Mensagem de leitura do potenciômetro
-  const messageReadPot: MessageServer = {
-    dst: selectedDevice,
-    src: "Luan",
-    fct: "read",
-    param: "1",
-    val: "",
-  };
+
 
   // Mensagem de escrita da lâmpada
   const messageWriteLamp: MessageServer = {
@@ -33,21 +26,39 @@ export default function Dashboard() {
     val: String(!lampOn),
   };
 
+  useEffect(() => {
+    sendMessage({
+      type: "devices-request",
+      src: "Luan",
+    });
+  }, []);
+
   // Solicita leituras periódicas
   useEffect(() => {
     const interval = setInterval(() => {
-      sendMessage(messageReadPot);
-    }, 2000);
+
+      if (selectedDevice) {
+        sendMessage({
+          dst: selectedDevice,
+          src: "Luan",
+          fct: "read",
+          param: "1",
+          val: "",
+        });
+      }
+
+    }, 10000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [selectedDevice]);
 
   // Recebe mensagens do WebSocket
   useEffect(() => {
     const unsubscribe = onMessage((msg) => {
     
-    if (msg.src && !devices.includes(msg.src)) {
-        setDevices((prev) => [...prev, msg.src]); // adiciona novo device detectado
+    if (msg.type == "devices-update") {
+        console.log("Lista de dispositivos recebida:", msg.devices);
+        setDevices(msg.devices); // adiciona novo device detectado
     }
 
     if (msg.fct === "read" && String(msg.param) === "1") {
@@ -64,10 +75,18 @@ export default function Dashboard() {
         },
       ]);
     }
-  });
 
-  return unsubscribe;
-}, [selectedDevice, devices]);
+    });
+
+    return unsubscribe;
+  }, []);
+
+// Quando trocar de dispositivo, limpar dados anteriores
+useEffect(() => {
+  setData([]);        // limpa o gráfico
+  setPotValue(0);     // zera leitura exibida
+  setLampOn(false);   // opcional: resetar estado da lâmpada
+}, [selectedDevice]);
 
   // Alterna lâmpada
   const handleLampToggle = () => {
@@ -85,7 +104,7 @@ export default function Dashboard() {
             <SelectTrigger className="w-[200px] bg-[#2b2b2b] border border-[#333] text-white !text-white [&>span]:text-white">
               <SelectValue placeholder="Selecione um dispositivo" className="!text-white"/>
             </SelectTrigger>
-            <SelectContent className="bg-[#2b2b2b] text-white border border-[#333]">
+            <SelectContent>
               {devices.length > 0 ? (
                 devices.map((dev) => (
                   <SelectItem key={dev} value={dev}>
@@ -97,7 +116,8 @@ export default function Dashboard() {
                   Nenhum dispositivo detectado
                 </SelectItem>
               )}
-            </SelectContent>
+          </SelectContent>
+
           </Select>
       </div>
 

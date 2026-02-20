@@ -1,10 +1,27 @@
 let socket: WebSocket | null = null;
 let messageHandlers: ((msg: any) => void)[] = [];
 
-export const connectWebSocket = (token: string) => {
-  socket = new WebSocket(`ws://localhost:8090?token=${token}`);
+let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+let reconnectAttempts = 0;
+let currentToken: string | null = null;
 
-  socket.onopen = () => console.log("Conexão WebSocket estabelecida");
+const max_reconnect_timeout = 10000;
+
+export const connectWebSocket = (token: string) => {
+  currentToken = token;
+
+  socket = new WebSocket(`ws://localhost:8090?token=${currentToken}`);
+
+  socket.onopen = () => {
+    console.log("Conexão WebSocket estabelecida");
+    
+    reconnectAttempts = 0;
+
+    if (reconnectTimeout) {
+      clearTimeout(reconnectTimeout);
+      reconnectTimeout = null;
+    }
+  }
 
   socket.onmessage = (event) => {
     try {
@@ -17,7 +34,10 @@ export const connectWebSocket = (token: string) => {
     }
   };
 
-  socket.onclose = () => console.log("Conexão WebSocket fechada");
+  socket.onclose = () => {
+    console.log("Conexão WebSocket fechada");
+    reconnect();
+  }
 
   socket.onerror = (err) => console.error("Erro no WebSocket:", err);
 };
@@ -39,3 +59,21 @@ export const onMessage = (callback: (msg: any) => void) => {
     messageHandlers = messageHandlers.filter((cb) => cb !== callback);
   };
 };
+
+export const reconnect = () => {
+  if(!currentToken) return;
+
+  reconnectAttempts++;
+
+  const delay = Math.min(
+    1000 * Math.pow(2, reconnectAttempts),
+    max_reconnect_timeout
+  );
+
+  console.log(`Reconectando em ${delay/1000} s...`);
+
+  reconnectTimeout = setTimeout(() => {
+    connectWebSocket(currentToken!);
+  }, delay);
+
+}
